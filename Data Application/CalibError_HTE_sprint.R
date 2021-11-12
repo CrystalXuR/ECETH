@@ -263,13 +263,13 @@ rlasso_ate_est <- c(mean(rlasso_ate), rlasso_ate_CI)
 out <- round(rbind(Scoxph_est, Slasso_est, Rlasso_est, aipw_ate_est, Scoxph_ate_est, Slasso_ate_est, rlasso_ate_est),4)
 write.csv(out, "calibration_error.csv")
 
+#               CalibErr  2.5%  97.5%
+# Scoxph_est     0.0023  0.0004 0.0047
+# Slasso_est     0.0047  0.0022 0.0077
+# Rlasso_est     0.0004 -0.0006 0.0017
 
-#                         2.5%  97.5%
-# Scoxph_est     0.0022  0.0003 0.0044
-# Slasso_est     0.0045  0.0019 0.0077
-# Rlasso_est     0.0005 -0.0007 0.0016
-# aipw_ate_est   0.0226  0.0083 0.0354
-# Scoxph_ate_est 0.0213  0.0203 0.0225
-# Slasso_ate_est 0.0646  0.0632 0.0662
-# rlasso_ate_est 0.0166  0.0166 0.0167 
-
+#                 ATE     2.5%  97.5%
+# aipw_ate_est   0.0217  0.0105 0.0341
+# Scoxph_ate_est 0.0213  0.0202 0.0224
+# Slasso_ate_est 0.0647  0.0631 0.0663
+# rlasso_ate_est 0.0166  0.0166 0.0167
