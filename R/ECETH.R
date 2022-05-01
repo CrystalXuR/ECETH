@@ -9,34 +9,38 @@
 #' \donttest{
 #' n <- 1500
 #' p <- 5
-#' X <- matrix(rnorm(n * p), n, p)
+#' X <- matrix(runif(n * p), n, p)
 #' W <- rbinom(n, 1, 0.5)
+#'
+#' # binary outcome
 #' event.prob <- 1 / (1 + exp(2*(pmax(2*X[, 1], 0) * W - X[, 2])))
 #' Y <- rbinom(n, 1, event.prob)
 #' train <- sample(1:n, n / 2)
 #' cf.fit <- causal_forest(X[train, ], Y[train], W[train])
-#' cf.cate <- -1 * predict(cf.fit, X[-train, ])$predictions
-#'
+#' cf.cate <- predict(cf.fit, X[-train, ])$predictions
 #' # Compute the AIPW score
-#' cate.score <- aipw.score(X = X[-train, ], W = W[-train], Y = Y[-train])
-#'
+#' cate.score <- aipw_score(X = X[-train, ], W = W[-train], Y = Y[-train])
 #' # ECETH
 #' caliberror <- eceth(cf.cate, cate.score)
+#'
+#' # time-to-event outcome
+#' horizon <- 1
+#' failure.time <- pmin(rexp(n) * X[, 1] + W, horizon)
+#' censor.time <- 2 * runif(n)
+#' # Discretizing continuous events decreases runtime.
+#' Y <- round(pmin(failure.time, censor.time), 2)
+#' D <- as.integer(failure.time <= censor.time)
+#' t0 <- median(Y)
+#' # Compute the AIPW score
+#' cs.forest <- causal_survival_forest(X[train, ], Y[train], W[train], D[train], target = "survival.probability", horizon = t0)
+#' csf.cate <- predict(cs.forest, X[-train, ])$predictions
+#' # Compute the AIPW score for survival outcomes
+#' cate.surv.score <- aipw_surv_score(X = X[-train, ], W = W[-train], Y = Y[-train], D = D[-train], t0 = t0)
+#' # ECETH
+#' caliberror <- eceth(csf.cate, cate.surv.score)
 #' }
 #' @return
 #' @export
-
-# AIPW-based score for RCT, non-survival outcome
-aipw.score <-  function(X, W, Y){
-  fit <- grf::regression_forest(X = cbind(X, W), Y = Y)   # outcome estimates
-  u  <- predict(fit)$predictions
-  u1 <- predict(fit, cbind(1, X))$predictions
-  u0 <- predict(fit, cbind(0, X))$predictions
-  ps <- mean(W)
-  score <- unlist(u1 - u0 + (W - ps) / (ps * (1 - ps)) * (Y - u))
-  return(score)
-}
-
 eceth <- function(cate.est, cate.score, g = 10){
   if (length(unique(cate.est)) == 1) {
     warning("CATE predictions are identical, expected squared error of average treatment effect is computed instead")
