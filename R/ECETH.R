@@ -43,26 +43,27 @@
 #' @export
 eceth <- function(cate.est, cate.score, g = 10){
   if (length(unique(cate.est)) == 1) {
-    warning("CATE predictions are identical, expected squared error of average treatment effect is computed instead")
-    error <- mean((cate.score - cate.est)^2)
+    g <- 1
+    groups <- factor(rep(1, length(cate.est)))
   } else {
     groups <- cut(cate.est, breaks = unique(quantile(cate.est, probs=seq(0,1,1/g))), include.lowest=TRUE)
-    gamma_Delta_hat  <- aggregate(cate.score, by = list(groups), FUN = "mean")$x
-    if (length(gamma_Delta_hat) < g){
-      warning(paste0(length(gamma_Delta_hat), " groups are used instead of ", g, " due to not enough distinct values"))
-    }
-    N <- length(cate.score)
-
-    if (N <= g) {
-      stop("The number of groups must be smaller than number of predictions")
-    }
-
-    gamma_Delta_hat_i <- rep(NA, N)
-    for (k in 1:N){
-      gamma_hat_i <- gamma_Delta_hat[as.numeric(groups)[k]]
-      gamma_Delta_hat_i[k] <- (N/g)/(N/g-1)*gamma_hat_i - 1/(N/g-1)*cate.score[k]
-    }
-    error <- mean((cate.score - cate.est) * (gamma_Delta_hat_i - cate.est))
   }
+
+  gamma_Delta_hat <- aggregate(cate.score, by = list(groups), FUN = "mean")$x
+  if (length(gamma_Delta_hat) < g){
+    warning(paste0(length(gamma_Delta_hat), " groups are used instead of ", g, " due to not enough distinct values"))
+  }
+  N <- length(cate.score)
+
+  if (N <= g) {
+    stop("The number of groups must be smaller than number of predictions")
+  }
+
+  gamma_Delta_hat_i <- rep(NA, N)
+  for (k in 1:N){
+    gamma_hat_i <- gamma_Delta_hat[as.numeric(groups)[k]]
+    gamma_Delta_hat_i[k] <- (N/g)/(N/g-1)*gamma_hat_i - 1/(N/g-1)*cate.score[k]
+  }
+  error <- mean((cate.score - cate.est) * (gamma_Delta_hat_i - cate.est))
   return(error)
 }
