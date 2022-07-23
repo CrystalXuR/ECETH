@@ -41,29 +41,44 @@
 #' }
 #' @return
 #' @export
-eceth <- function(cate.est, cate.score, g = 10){
-  if (length(unique(cate.est)) == 1) {
-    g <- 1
+eceth <- function(cate.est, cate.score, g = 10, label = ""){
+  if (length(unique(cate.est)) <= 2) {
     groups <- factor(rep(1, length(cate.est)))
   } else {
     groups <- cut(cate.est, breaks = unique(quantile(cate.est, probs=seq(0,1,1/g))), include.lowest=TRUE)
   }
 
+  g <- length(levels(groups))
+  if (g < 10) {
+    warning(paste0(g, "groups are used instead of 10 due to not enough distinct values"))
+  }
+
   gamma_Delta_hat <- aggregate(cate.score, by = list(groups), FUN = "mean")$x
-  if (length(gamma_Delta_hat) < g){
-    warning(paste0(length(gamma_Delta_hat), " groups are used instead of ", g, " due to not enough distinct values"))
-  }
   N <- length(cate.score)
-
-  if (N <= g) {
-    stop("The number of groups must be smaller than number of predictions")
-  }
-
   gamma_Delta_hat_i <- rep(NA, N)
   for (k in 1:N){
     gamma_hat_i <- gamma_Delta_hat[as.numeric(groups)[k]]
     gamma_Delta_hat_i[k] <- (N/g)/(N/g-1)*gamma_hat_i - 1/(N/g-1)*cate.score[k]
   }
   error <- mean((cate.score - cate.est) * (gamma_Delta_hat_i - cate.est))
-  return(error)
+
+  # Calibration plot
+  if (length(unique(cate.est)) <= 2) {
+    cp <- NULL
+  } else {
+    pred_cate_agg <- aggregate(cate.est, by = list(groups), FUN = "mean")$x
+    obs_cate_agg <- aggregate(gamma_Delta_hat_i, by = list(groups), FUN = "mean")$x
+    fig.data <- data.frame(pred = pred_cate_agg, obs = obs_cate_agg)
+    cp <- ggplot(fig.data, aes(x = pred, y = obs)) +
+      theme_bw() +
+      xlim(min(obs), max(obs)) +
+      ylim(min(obs), max(obs)) +
+      xlab(paste0(labels, " predicted CATEs")) +
+      ylab("Estimated observed CATEs") +
+      geom_abline(intercept = 0, slope = 1, linetype = 2, size = 0.7, col = 'blue') +
+      geom_point()
+  }
+
+  out <- list(error = error, obs.cates = gamma_Delta_hat_i, cp = cp)
+  return(out)
 }
